@@ -1,0 +1,1 @@
+python -m client.run_evaluation
