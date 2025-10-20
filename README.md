@@ -112,6 +112,12 @@ The UniRL project encompasses the following key components:
    Please correctly set up the setting name and WANDB_KEY in the `train_blip3o_[setting_name].sh` file. 
 
 
+4. Inference 
+
+   For image generation inference:
+   ```bash
+   python -m scripts.inference.inference_blip3o_t2i
+   ```
 
 
 
