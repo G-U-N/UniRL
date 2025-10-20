@@ -12,7 +12,7 @@ Our mission is to enable seamless joint training of language models and diffusio
 
 ## News
 
-- [2025-10-20]: Release the initial version code and report of project `UniRL`.
+- [2025-10-20]⭐️: Release the initial version code and report of project `UniRL`.
 
 
 ## Installation 🛠️
