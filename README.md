@@ -1,4 +1,4 @@
-# 🌟 UniRL Project: Unleashing Reinforcement Learning Power on Joint Langue Model and Diffusion Model! 🚀
+# 🌟 UniRL Project: Unleashing Reinforcement Learning Power! 🚀
 
 ## Overview
 
