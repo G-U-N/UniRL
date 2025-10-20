@@ -134,10 +134,6 @@ The UniRL project encompasses the following key components:
 
 4. Inference 
 
-   Download pretrained models weights: 
-
-   
-
    For image generation inference:
    ```bash
    python -m scripts.inference.inference_blip3o_t2i
