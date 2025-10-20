@@ -605,7 +605,7 @@ class PMattersGRPOTrainer(BaseGRPOTrainer):
         refined_prompts = [self.model.extract_thinking_content(completion) for completion in completions]
         
         if isinstance(self.model, QwenSD3ForInferenceLM):
-            images = self.generate_images_with_sd3_api(refined_prompts, endpoint="http://192.222.52.77:18099/")
+            images = self.generate_images_with_sd3_api(refined_prompts, endpoint="http://NODE_ADDR:18099/")
         else:
             with unwrap_model_for_generation(self.model, self.accelerator) as unwrapped_model:
                 with torch.no_grad():
