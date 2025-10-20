@@ -2,14 +2,17 @@
 
 ## Overview
 
-Welcome to the **UniRL** project, where we supercharge reinforcement learning with cutting-edge deep learning frameworks! 🎉 This repository is your go-to hub for advanced model training, powered by DeepSpeed. Ready to jump in? 🧙‍♂️
+Welcome to the **UniRL** project, where we supercharge reinforcement learning with joint diffusion model and language model experts! 🎉 Ready to jump in? 🧙‍♂️
 
+Our mission is to enable seamless joint training of language models and diffusion models for reinforcement learning. UniRL might supports a diverse range of powerful pretrained models, including language models (Qwen, Qwen-VL), diffusion models (Flux-dev, Flux-Kontext, Stable Diffusion), and unified models (MetaQuery, Blip3o).
 
 
 ## News
 
-> TBD
- 
+- [2025-10-20]: Release the initial version code and report of project `UniRL`.
+
+
+
 ## Installation 🛠️
 
 ### Environment Setup
@@ -94,6 +97,24 @@ The UniRL project encompasses the following key components:
 
 3. Run your experiments and enjoy seamless training! 😎
 
+   For pretraining the base unified understanding and generation model,
+
+   ```bash
+   bash UniRL/scripts/train/pretrain/train.sh
+   ```
+   which will automatically download the model weights and datasets.
+
+   For RL training,
+
+   ```bash
+   bash UniRL/scripts/train/rl/train_blip3o_[setting_name].sh
+   ```
+   Please correctly set up the setting name and WANDB_KEY in the `train_blip3o_[setting_name].sh` file. 
+
+
+
+
+
 ## Contributing 🤝
 
 Got ideas to make UniRL even better? Submit a pull request or open an issue to join the fun! We love community contributions. 🌈
@@ -104,6 +125,7 @@ This project is licensed under the Apache-2.0 License. See the `LICENSE` file fo
 
 ## Also Read 📚
 
+
 Check out these amazing related works to explore more in reinforcement learning and generative models:
 
 - **GRPO**: [DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models](https://arxiv.org/abs/2402.03300)
@@ -111,6 +133,4 @@ Check out these amazing related works to explore more in reinforcement learning 
 - **RLOO**: [Back to Basics: Revisiting REINFORCE Style Optimization for Learning from Human Feedback in LLMs](https://arxiv.org/abs/2402.14740)
 - **Flow-GRPO**: [Flow-GRPO: Training Flow Matching Models via Online RL](https://arxiv.org/abs/2505.05470)
 - **DanceGRPO**: [DanceGRPO: Unleashing GRPO on Visual Generation](https://arxiv.org/abs/2505.07818)
-
-Happy coding, and let's make RL unstoppable! 💥
 

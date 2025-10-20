@@ -1,6 +1,6 @@
 export WANDB_BASE_URL=https://api.wandb.ai
 export WANDB_PROJECT=UniRL-Zero
-export WANDB_API_KEY="5fad14fb83d2bb193c07ab026d2d714a4cdffafd"
+export WANDB_API_KEY="[YOUR WANDB_API_KEY]"
 export WANDB_RUN_NAME=Qwen-VL-3B-GRPO-$(date +%Y-%m-%d-%H-%M-%S)
 export RUN_NAME=Kontext_I2I
 wandb login $WANDB_API_KEY
@@ -38,7 +38,7 @@ torchrun --nproc_per_node=8 \
 
 export WANDB_BASE_URL=https://api.wandb.ai
 export WANDB_PROJECT=UniRL-Zero
-export WANDB_API_KEY="5fad14fb83d2bb193c07ab026d2d714a4cdffafd"
+export WANDB_API_KEY="[YOUR WANDB_API_KEY]"
 export WANDB_RUN_NAME=Qwen-VL-3B-GRPO-$(date +%Y-%m-%d-%H-%M-%S)
 export RUN_NAME=FLUX
 wandb login $WANDB_API_KEY
@@ -76,7 +76,7 @@ torchrun --nproc_per_node=8 \
 
 export WANDB_BASE_URL=https://api.wandb.ai
 export WANDB_PROJECT=UniRL-Zero
-export WANDB_API_KEY="5fad14fb83d2bb193c07ab026d2d714a4cdffafd"
+export WANDB_API_KEY="[YOUR WANDB_API_KEY]"
 export WANDB_RUN_NAME=Qwen-VL-3B-GRPO-$(date +%Y-%m-%d-%H-%M-%S)
 export RUN_NAME=FLUX
 wandb login $WANDB_API_KEY
