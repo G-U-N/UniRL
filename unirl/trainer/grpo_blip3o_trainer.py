@@ -90,7 +90,7 @@ def compute_log_prob(model_pred: torch.Tensor,
         
     Returns:
         Tuple of (prev_sample, log_prob, prev_sample_mean, std_dev_t)
-    """
+    """ 
     prev_sample, log_prob, prev_sample_mean, std_dev_t = sde_step_with_logprob(
         scheduler,
         model_pred.float(),

@@ -22,14 +22,14 @@ import pickle
 from io import BytesIO
 
 SCORER_URLS = {
-    "aesthetic": "http://192.222.52.77:18080/",
-    "image_reward": "http://192.222.52.77:18081/",
-    "ocr": "http://192.222.52.77:18082/",
-    "pickscore": "http://192.222.52.77:18083/",
-    "deqa": "http://192.222.52.77:18084/",
-    "gen_eval": "http://192.222.52.77:18085/",
-    "unifiedreward_sglang": "http://192.222.52.77:18086/", 
-    "hps": "http://192.222.52.77:18087/", 
+    "aesthetic": "http://[NODE_ADDR]:18080/",
+    "image_reward": "http://[NODE_ADDR]:18081/",
+    "ocr": "http://[NODE_ADDR]:18082/",
+    "pickscore": "http://[NODE_ADDR]:18083/",
+    "deqa": "http://[NODE_ADDR]:18084/",
+    "gen_eval": "http://[NODE_ADDR]:18085/",
+    "unifiedreward_sglang": "http://[NODE_ADDR]:18086/", 
+    "hps": "http://[NODE_ADDR]:18087/", 
 
 }
 

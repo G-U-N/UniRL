@@ -12,7 +12,6 @@ Our mission is to enable seamless joint training of language models and diffusio
 - [2025-10-20]: Release the initial version code and report of project `UniRL`.
 
 
-
 ## Installation 🛠️
 
 ### Environment Setup
@@ -50,6 +49,18 @@ Follow these steps to get started:
 
    ```bash
    conda activate unirl
+   ```
+
+6. **Install Reward Services** 😊:
+   ```bash
+   cd rewards_services/api_services
+   # install the environments of api services independently following the readme files.
+   # take aesthetic score as an example:
+   cd aesthetic_scorer_service
+   conda create -n aes python=3.10 -y
+   conda activate aes
+   pip install -r requirements.txt
+   bash run.sh
    ```
 
 ### Custom DeepSpeed Modification 🔧
@@ -113,6 +124,10 @@ The UniRL project encompasses the following key components:
 
 
 4. Inference 
+
+   Download pretrained models weights: 
+
+   
 
    For image generation inference:
    ```bash
