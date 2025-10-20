@@ -1,7 +1,5 @@
 # 🌟 UniRL Project: Unleashing Reinforcement Learning Power! 🚀
 
-## Overview
-
 Welcome to the **UniRL** project, where we supercharge reinforcement learning with joint diffusion model and language model experts with a user-friendly, lightweight codebase! 🎉 Ready to jump in? 🧙‍♂️
 
 Our mission is to enable seamless joint training of language models and diffusion models for reinforcement learning. 
@@ -12,7 +10,8 @@ UniRL might supports RL training on a diverse range of powerful pretrained model
 - unified models: `MetaQuery`, `Blip3o`.
 - and more importantly, **joint RL training on disjoint language models and diffusion models**, such as `Qwen` and `Flux`. 
 
-  
+---
+
 <div align="center">
   <img src="assets/images/main.jpg" width="800"/>
 </div>
