@@ -54,14 +54,20 @@ Follow these steps to get started:
 6. **Install Reward Services** 😊:
    ```bash
    cd rewards_services/api_services
+   
+   
    # install the environments of api services independently following the readme files.
    # take aesthetic score as an example:
+   
+   
    cd aesthetic_scorer_service
    conda create -n aes python=3.10 -y
    conda activate aes
    pip install -r requirements.txt
    bash run.sh
    ```
+
+   After lanuching all the reward services, please modify the `[NODE_ADDR]` (in `unirl/reward_evaluator/reward_evaluator.py`, `unirl/trainer/grpo_pmatters_trainer.py`) as the address of the reward service machine. 
 
 ### Custom DeepSpeed Modification 🔧
 
