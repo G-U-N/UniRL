@@ -119,6 +119,11 @@ The UniRL project encompasses the following key components:
    python -m scripts.inference.inference_blip3o_t2i
    ```
 
+   For image editing inference:
+   ```bash
+   python -m scripts.inference.inference_blip3o_i2i
+   ```
+
 
 
 ## Contributing 🤝

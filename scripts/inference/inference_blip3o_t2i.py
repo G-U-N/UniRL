@@ -15,7 +15,7 @@ from pathlib import Path
 
 import re, random
 
-model_path = "/home/ubuntu/open-r1-multimodal/unirl/outputs/pretrain/blip3o/checkpoint-pretrain"
+model_path = "outputs/pretrain/blip3o/checkpoint-pretrain"
 
 
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
