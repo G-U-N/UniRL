@@ -171,3 +171,12 @@ Check out these amazing related works to explore more in reinforcement learning 
 - **Flow-GRPO**: [Flow-GRPO: Training Flow Matching Models via Online RL](https://arxiv.org/abs/2505.05470)
 - **DanceGRPO**: [DanceGRPO: Unleashing GRPO on Visual Generation](https://arxiv.org/abs/2505.07818)
 
+
+
+## Thanks
+
+We thank the following library for providing a robust foundation for code:
+
+- [OpenR1](https://github.com/huggingface/open-r1)
+- [BLIP3O](https://github.com/JiuhaiChen/BLIP3o/tree/main?tab=readme-ov-file) 
+- [OpenR1-Multimodal](https://github.com/EvolvingLMMs-Lab/open-r1-multimodal)
