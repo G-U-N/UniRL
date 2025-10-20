@@ -6,6 +6,9 @@ Welcome to the **UniRL** project, where we supercharge reinforcement learning wi
 
 Our mission is to enable seamless joint training of language models and diffusion models for reinforcement learning. UniRL might supports a diverse range of powerful pretrained models, including language models (Qwen, Qwen-VL), diffusion models (Flux-dev, Flux-Kontext, Stable Diffusion), and unified models (MetaQuery, Blip3o).
 
+<div align="center">
+  <img src="assets/images/main.jpg" width="500"/>
+</div>
 
 ## News
 
