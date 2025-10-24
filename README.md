@@ -8,7 +8,13 @@ UniRL might supports RL training on a diverse range of powerful pretrained model
 - language models: `Qwen`, `Qwen-VL`
 - diffusion models: `Flux-dev`, `Flux-Kontext`, `Stable Diffusion`, `SANA`
 - unified models: `MetaQuery`, `Blip3o`.
-- and more importantly, **joint RL training on disjoint language models and diffusion models**, such as `Qwen` and `Flux`. 
+- and more importantly, **joint RL training on disjoint language models and diffusion models**, such as `Qwen` and `Flux`.
+- reward models available: `aesthetic`, `deqa`, `editreward`, `geneval`, `hps`, `image_reward`, `paddle_ocr`, `pickscore`, `unifiedreward`, ...
+
+
+
+
+
 
 ---
 
