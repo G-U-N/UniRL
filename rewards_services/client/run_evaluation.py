@@ -90,7 +90,6 @@ def main():
 
     print("\n--- Evaluating with EditReward---")
     try:
-        
         prompts = ["make it indentical to the source image."] * len(images_pil)
         editreward_results = evaluator.evaluate("editreward", dict(source=images_pil, edited=images_pil), prompts)
         print(f"EditReward Scores: {editreward_results.get('scores', 'N/A')}")
