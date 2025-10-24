@@ -173,7 +173,7 @@ Check out these amazing related works to explore more in reinforcement learning 
 
 
 
-## Thanks
+## Acknowledge
 
 We thank the following library for providing a robust foundation for code:
 

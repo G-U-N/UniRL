@@ -17,6 +17,7 @@ SCORER_URLS = {
     "gen_eval": "http://0.0.0.0:18085/",
     "unifiedreward_sglang": "http://0.0.0.0:18086/", 
     "hps": "http://0.0.0.0:18087/", 
+    "editreward": "http://0.0.0.0:18088/", 
 
 }
 

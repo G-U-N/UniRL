@@ -87,6 +87,16 @@ def main():
     except Exception as e:
         print(f"UnifiedReward (SGLang) Scorer Error: {e}")
 
+
+    print("\n--- Evaluating with EditReward---")
+    try:
+        
+        prompts = ["make it indentical to the source image."] * len(images_pil)
+        editreward_results = evaluator.evaluate("editreward", dict(source=images_pil, edited=images_pil), prompts)
+        print(f"EditReward Scores: {editreward_results.get('scores', 'N/A')}")
+    except Exception as e:
+        print(f"EditReward Scorer Error: {e}")
+
     print("\n--- Evaluating Multiple Models ---")
     model_weights_example = {
         "aesthetic": 0.2,
