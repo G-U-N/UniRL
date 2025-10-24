@@ -126,14 +126,14 @@ The UniRL project encompasses the following key components:
    For pretraining the base unified understanding and generation model,
 
    ```bash
-   bash UniRL/scripts/train/pretrain/train.sh
+   bash scripts/train/pretrain/train.sh
    ```
    which will automatically download the model weights and datasets.
 
    For RL training,
 
    ```bash
-   bash UniRL/scripts/train/rl/train_blip3o_[setting_name].sh
+   bash scripts/train/rl/train_blip3o_[setting_name].sh
    ```
    Please correctly set up the setting name and WANDB_KEY in the `train_blip3o_[setting_name].sh` file. 
 
