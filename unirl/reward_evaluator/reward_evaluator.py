@@ -103,7 +103,7 @@ def deserialize_images(images_bytes: List[bytes]) -> List[Image.Image]:
     return images
 
 def create_payload(images: List[Image.Image], prompts: List[str], metadata: Dict[str, Any] = None) -> bytes:
-    serialized_images = serialize_images(images)
+    serialized_images = serialize_images(images) if isinstance(images, list) else dict({key: serialize_images(value) for key, value in images.items()})
     payload = {
         "images": serialized_images,
         "prompts": prompts,
