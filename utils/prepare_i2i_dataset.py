@@ -40,3 +40,21 @@ sampled_dataset = i2i_dataset.select(sample_indices)
 sampled_dataset.to_parquet('../assets/large_rl_datasets/random_sample_3000.parquet')
 
 print(f"Sampled {len(sampled_dataset)} examples from {files_to_sample} Parquet files and saved to 'random_sample_3000.parquet'.")
+
+
+#### 
+
+from typing import Dict
+
+
+def parse_txt(example: Dict) -> Dict:
+    """Extracts text prompt from the 'edited_prompt_list' field (for I2I data)."""
+    example["prompt"] = example["edited_prompt_list"][-1]
+    return example
+from datasets import load_dataset
+
+
+result = load_dataset("parquet", data_files="../assets/large_rl_datasets/random_sample_3000.parquet", split="train", num_proc=8).select_columns(["src_img", "edited_prompt_list"]).map(parse_txt, num_proc=8).rename_columns({"src_img": "image"}).remove_columns(["edited_prompt_list"])
+
+result.to_parquet('../assets/large_rl_datasets/i2i_train.parquet')
+
