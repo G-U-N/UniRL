@@ -1426,11 +1426,10 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
                 ).to(device)
             elif func_name == "editreward":
                 images_input = dict(source=[example["image"] for example in inputs for _ in range(self.num_generations)], edited=images)
-                rewards_per_func[:, i] = reward_func(
+                rewards_per_func[:, i] = torch.tensor(reward_func(
                     images_input,
                     [example["editing_instruction"] for example in inputs for _ in range(self.num_generations)],
-                    reward_processing
-                ).to(device)
+                )["scores"]).to(device)
             else:
                 raise ValueError(f"Unknown reward function: {func_name}")
         
