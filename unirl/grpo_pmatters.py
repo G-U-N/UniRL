@@ -261,8 +261,8 @@ class PromptDataset(Dataset):
         self.question_template = question_template
         self.prompts = []
         self.transform = T.Compose([
-        T.Resize(512, interpolation=T.InterpolationMode.BILINEAR),  
-        T.CenterCrop((512, 512))  
+        T.Resize(1024, interpolation=T.InterpolationMode.BILINEAR),  
+        T.CenterCrop((1024, 1024))  
     ])
         
         if prompts_file.endswith(".txt"):
@@ -309,13 +309,13 @@ class PromptDataset(Dataset):
             for item in dataset:
                 prompt = item.get("prompt", "")
                 reverse_prompt = item.get("reverse_prompt", "")
-                image = item.get("image", None)
+                image = item.get("image", None).convert("RGB") if item.get("image", None) is not None else None
                 if not prompt or not image:
                     continue
                 formatted_prompt = self.question_template.format(Question=prompt)
                 formatted_reverse_prompt = self.question_template.format(Question=reverse_prompt)
                 self.prompts.append({
-                    "image": self.transform(item.get("image", None)),
+                    "image": self.transform(image),
                     "caption": item.get("caption", ""),
                     "target_caption": item.get("target_caption", ""),
                     "editing_instruction": item.get("prompt", ""),
@@ -360,12 +360,12 @@ def main(script_args, training_args, model_args):
     if script_args.task == "t2i-text" or script_args.task == "t2i-joint" or script_args.task == "t2i-diff":
         QUESTION_TEMPLATE = """Please provide an enhanced prompt for the following image generation prompt to make the image more realistic, detailed, with clear separation and precise alignment of all entities.
             Original prompt: {Question}.  Directly provide the improved prompt in <answer> </answer> tags."""
-    elif script_args.task == "i2i-text":
+    elif script_args.task == "i2i-text" or script_args.task == "i2i-text-cyle":
         QUESTION_TEMPLATE = """Please provide an enhanced prompt for the following image editing prompt. 
             Ensure the revised prompt is clear, specific, and includes detailed instructions to achieve the desired outcome while maintaining the original intent. 
             Original prompt: {Question}. Directly provide the improved prompt in <answer> </answer> tags."""""
     else: 
-        assert 0, "Unsupported task. Choose from 't2i-text', 't2i-diff', 't2i-joint', or 'i2i'."
+        assert 0, "Unsupported task. Choose from 't2i-text', 't2i-diff', 't2i-joint', 'i2i-text', or 'i2i-text-cyle'."
 
     train_dataset = PromptDataset(
         prompts_file=script_args.prompts_file,

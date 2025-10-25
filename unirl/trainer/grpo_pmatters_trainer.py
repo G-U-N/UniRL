@@ -1459,7 +1459,7 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
         device_id = int(str(self.accelerator.device).split(":")[-1]) if ":" in str(self.accelerator.device) else 0
         return {
             "guidance_scale": 2.5,
-            "num_inference_steps": 20,
+            "num_inference_steps": 10,
             "num_images_per_prompt": 1,
             "generator": torch.manual_seed(42 + device_id),
             "height": 512,
@@ -1550,7 +1550,9 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
         device_id = str(self.model.device).replace(":", "")
         log_dir = self.log_dir
 
-        text_content = f"Prompt: {prompts_text[0]}\n"
+        text_contet = ""
+        for idx in range(self.num_generations):
+            text_content += f"Prompt: {prompts_text[idx]}\n"
         if os.path.exists(os.path.join(log_dir, f"step_{global_step}_{device_id}.txt")):
             return 
         with open(os.path.join(log_dir, f"step_{global_step}_{device_id}.txt"), "w", encoding="utf-8") as f:
@@ -1562,7 +1564,8 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
             orig_img_pil = orig_img
             rev_img_pil = rev_img
             orig_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_orig_{idx}.jpg"))
-            rev_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_reverse_{idx}.jpg"))
+            rev_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_edited_{idx}_{advantages[idx].item():.5f}.jpg"))
+
 
     def _compute_cot_loss(
         self,
@@ -1744,4 +1747,4 @@ class QwenKontextCycleGRPOTrainer(QwenKontextGRPOTrainer):
             recon_img_pil = recon_img
             orig_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_orig_{idx}.jpg"))
             rev_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_reverse_{idx}.jpg"))
-            recon_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_recon_{idx}_{advantages[idx].item()}.jpg"))
+            recon_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_recon_{idx}_{advantages[idx].item():.5f}.jpg"))
