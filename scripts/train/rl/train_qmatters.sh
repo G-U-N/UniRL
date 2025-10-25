@@ -14,7 +14,7 @@ torchrun --nproc_per_node=8 \
     --reward_funcs sim_direction clip_sim \
     --deepspeed scripts/train/rl/deepspeed_scripts/zero3.json \
     --output_dir outputs/rl/kontext/$RUN_NAME \
-    --model_name_or_path /home/ubuntu/open-r1-multimodal/qwenkontext/qwenkontext-test \
+    --model_name_or_path /path_to/qwenkontext/qwenkontext-test \
     --prompts_file assets/rl_datasets/i2i_dataset.parquet \
     --max_prompt_length 8192 \
     --num_generations 8 \
@@ -52,7 +52,7 @@ torchrun --nproc_per_node=8 \
     --reward_funcs gen_eval format \
     --deepspeed scripts/train/rl/deepspeed_scripts/zero3.json \
     --output_dir outputs/rl/flux/$RUN_NAME \
-    --model_name_or_path /home/ubuntu/open-r1-multimodal/qwenflux/qwenflux-test \
+    --model_name_or_path /path_to/qwenflux/qwenflux-test \
     --prompts_file assets/rl_datasets/train_metadata.jsonl \
     --max_prompt_length 8192 \
     --num_generations 8 \
@@ -90,7 +90,7 @@ torchrun --nproc_per_node=8 \
     --reward_funcs gen_eval format \
     --deepspeed scripts/train/rl/deepspeed_scripts/zero3.json \
     --output_dir outputs/rl/flux/$RUN_NAME \
-    --model_name_or_path /home/ubuntu/open-r1-multimodal/qwenflux/qwenflux-test \
+    --model_name_or_path /path_to/qwenflux/qwenflux-test \
     --prompts_file assets/rl_datasets/train_metadata.jsonl \
     --max_prompt_length 8192 \
     --num_generations 8 \
