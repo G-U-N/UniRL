@@ -203,6 +203,9 @@ def aesthetic(images, prompts):
 def hps(images, prompts):
     return reward_client.evaluate("hps", images, prompts)
 
+def editreward(images, prompts):
+    return reward_client.evaluate("editreward", images, prompts)
+
 def format_reward(completions, **kwargs):
     """Reward function that checks if the completion has a specific format."""
     pattern = r'<answer>.*?</answer>'
@@ -228,6 +231,7 @@ reward_funcs_registry = {
     "clip_sim": clip_similarity,
     "sim_direction": sim_direction,
     "format": format_reward,
+    "editreward": editreward,
 }
 
 reward_processing_registry = {
@@ -245,6 +249,7 @@ reward_processing_registry = {
     "clip_sim": CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14"),
     "sim_direction": CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14"),
     "format": None,
+    "editreward": None,
 }
 
 SYSTEM_PROMPT = (

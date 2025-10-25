@@ -210,6 +210,9 @@ def format_reward(completions, **kwargs):
     matches = list(map(lambda x: re.match(pattern, x), completions))
     return [1.0 if match else 0.0 for match in matches]
 
+def editreward(images, prompts):
+    return reward_client.evaluate("editreward", images, prompts)
+
 reward_funcs_registry = {
     "recon": recon_reward,
     "jpeg_compressibility": jpeg_compressibility,
@@ -225,6 +228,7 @@ reward_funcs_registry = {
     "clip_sim": clip_similarity,
     "sim_direction": sim_direction,
     "format": format_reward,
+    "editreward": editreward,
 }
 
 reward_processing_registry = {
@@ -242,6 +246,7 @@ reward_processing_registry = {
     "clip_sim": CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14"),
     "sim_direction": CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14"),
     "format": None,
+    "editreward": None,
 }
 
 SYSTEM_PROMPT = (
