@@ -279,12 +279,12 @@ if __name__ == "__main__":
     outputs['images'][0].save("test_Sana_cot.jpg")
     
     # Save the model
-    model.save_pretrained("qwenSana-1.5")
+    model.save_pretrained("outputs/pretrain/qwenSana-1.5")
     
     # print("Sana model integration completed successfully!")
     
     # model = QwenSanaForInferenceLM.from_pretrained(
-    # "qwenSana-1.5", 
+    # "outputs/pretrain/qwenSana-1.5", 
     # torch_dtype=torch.bfloat16
     # ).to("cuda")
     

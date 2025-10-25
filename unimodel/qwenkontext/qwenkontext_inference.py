@@ -412,31 +412,31 @@ AutoModelForCausalLM.register(QwenKontextConfig, QwenKontextForInferenceLM)
 
 
 if __name__ == "__main__":
-    # model = QwenKontextForInferenceLM.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct",torch_dtype=torch.bfloat16)
-    # model.model.initialize_diffusion_expert()
-    # model.model.diffusion_expert.to("cuda:0")
-    # model.to("cuda:0")
-    # AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
-    # text = ["add a hat to him"]
-    # ref_image = [Image.open("../profile.jpg").convert("RGB")]
-    # images = model.generate_image(ref_image, text)
-    # images[0].save("test_flux.jpg")
-    # model.save_pretrained("qwenkontext-test")
-    
-    
-    model = QwenKontextForInferenceLM.from_pretrained("qwenkontext-test", torch_dtype=torch.bfloat16)
+    model = QwenKontextForInferenceLM.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct",torch_dtype=torch.bfloat16)
+    model.model.initialize_diffusion_expert()
+    model.model.diffusion_expert.to("cuda:0")
     model.to("cuda:0")
-    transform = transforms.Compose([
-        transforms.Resize(512, interpolation=transforms.InterpolationMode.BILINEAR),  # Shortest side to 512
-        transforms.CenterCrop((512, 512))  # Center crop to 512x512
-    ])
-    processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")    
+    AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
     text = ["add a hat to him"]
-    ref_image = [transform(Image.open("../profile.jpg").convert("RGB"))]
-    ref_image[0].save("ref.jpg")
+    ref_image = [Image.open("assets/images/cat.jpg").convert("RGB")]
     images = model.generate_image(ref_image, text)
     images[0].save("test_flux.jpg")
+    model.save_pretrained("outputs/pretrain/qwenkontext")
     
-    outputs = model.generate_image_cot(ref_image, text, processor = processor)
-    outputs['images'][0].save("test_flux_cot.jpg")
+    
+    # model = QwenKontextForInferenceLM.from_pretrained("outputs/pretrain/qwenkontext", torch_dtype=torch.bfloat16)
+    # model.to("cuda:0")
+    # transform = transforms.Compose([
+    #     transforms.Resize(512, interpolation=transforms.InterpolationMode.BILINEAR),  # Shortest side to 512
+    #     transforms.CenterCrop((512, 512))  # Center crop to 512x512
+    # ])
+    # processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")    
+    # text = ["add a hat to him"]
+    # ref_image = [transform(Image.open("assets/images/cat.jpg").convert("RGB"))]
+    # ref_image[0].save("ref.jpg")
+    # images = model.generate_image(ref_image, text)
+    # images[0].save("test_flux.jpg")
+    
+    # outputs = model.generate_image_cot(ref_image, text, processor = processor)
+    # outputs['images'][0].save("test_flux_cot.jpg")
 

@@ -401,10 +401,10 @@ if __name__ == "__main__":
     images = model.generate_image(text)
     images[0].save("test_flux.png")
     
-    model.save_pretrained("qwenflux-test")
+    model.save_pretrained("outputs/pretrain/qwenflux")
     
     
-    model = QwenFluxForInferenceLM.from_pretrained("qwenflux-test", torch_dtype=torch.bfloat16)
+    model = QwenFluxForInferenceLM.from_pretrained("outputs/pretrain/qwenflux", torch_dtype=torch.bfloat16)
     model.to("cuda:0")
     processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")    
     text = ["a photo of a cat"]
