@@ -1323,10 +1323,7 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
     by fine-tuning the language model while keeping the diffusion model frozen.
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self.reverse_diffusion_generation_config = self.diffusion_generation_config
-    
+        super().__init__(*args, **kwargs)    
         
         if any(name == "clip_sim" for name, _, _ in self.reward_funcs) or any(name == "sim_direction" for name, _, _ in self.reward_funcs):
             self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(self.accelerator.device)
@@ -1427,6 +1424,13 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
                     self.clip_model,
                     reward_processing
                 ).to(device)
+            elif func_name == "editreward":
+                images_input = dict(source=[example["image"] for example in inputs for _ in range(self.num_generations)], edited=images)
+                rewards_per_func[:, i] = reward_func(
+                    images_input,
+                    [example["editing_instruction"] for example in inputs for _ in range(self.num_generations)],
+                    reward_processing
+                ).to(device)
             else:
                 raise ValueError(f"Unknown reward function: {func_name}")
         
@@ -1462,6 +1466,171 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
             "height": 512,
             "width": 512
         }
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """Compute CoT loss with policy gradient."""
+        if return_outputs:
+            raise ValueError("The GRPOTrainer does not support returning outputs")
+        
+        ref_images = [x["image"] for x in inputs]
+        
+        # Prepare prompts
+        prompts_text = [maybe_apply_chat_template(example, self.processing_class)["prompt"] for example in inputs]
+        prompt_inputs = self.processing_class(
+            images = ref_images,
+            text=prompts_text,
+            return_tensors="pt",
+            padding=True,
+            padding_side="left",
+            add_special_tokens=False,
+        )
+        prompt_inputs = super()._prepare_inputs(prompt_inputs)
+        
+        if self.max_prompt_length is not None:
+            prompt_inputs["input_ids"] = prompt_inputs["input_ids"][:, -self.max_prompt_length:]
+            prompt_inputs["attention_mask"] = prompt_inputs["attention_mask"][:, -self.max_prompt_length:]
+        
+        # Generate completions
+        with unwrap_model_for_generation(model, self.accelerator) as unwrapped_model:
+            with torch.no_grad():
+                completion = unwrapped_model.generate(**prompt_inputs, generation_config=self.generation_config)
+                
+                # Pad if necessary
+                max_length = completion.size(1)
+                padding = torch.full(
+                    (completion.size(0), max_length - completion.size(1)),
+                    self.processing_class.tokenizer.pad_token_id,
+                    dtype=completion.dtype,
+                    device=completion.device,
+                )
+                prompt_completion_ids = torch.cat([completion, padding], dim=1) if padding.size(1) > 0 else completion
+        
+        prompt_length = prompt_inputs["input_ids"].size(1)
+        completion_ids = prompt_completion_ids[:, prompt_length:]
+        completions = self.processing_class.tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
+        
+        # Extract refined prompts and generate images
+        refined_prompts = [self.model.extract_thinking_content(completion) for completion in completions]
+        
+
+        with unwrap_model_for_generation(self.model, self.accelerator) as unwrapped_model:
+            with torch.no_grad():
+                images = unwrapped_model.generate_image(images = ref_images, texts=refined_prompts, diffusion_kwargs=self.diffusion_generation_config)
+        
+        
+        # Compute rewards and advantages
+        rewards, rewards_per_func = self.compute_rewards(inputs, images, completions)
+        advantages = self.compute_advantages(rewards)
+        
+        # Log samples
+        self._log_step(ref_images, images, refined_prompts, advantages)
+        
+        # Compute CoT loss
+        cot_loss, mean_kl, completion_mask = self._compute_cot_loss(
+            model, prompt_completion_ids, completion_ids, prompt_length, advantages
+        )
+        
+        # Log metrics
+        completion_length = self.accelerator.gather_for_metrics(completion_mask.sum(1)).float().mean().item()
+        self._metrics["completion_length"].append(completion_length)
+        self._metrics["reward"].append(self.accelerator.gather_for_metrics(rewards).mean().item())
+        self._metrics["cot_ref_loss"].append(self.accelerator.gather_for_metrics(mean_kl).mean().item())
+        self._metrics["cot_loss"].append(self.accelerator.gather_for_metrics(cot_loss).mean().item())
+        
+        for i, (func_name, _, _) in enumerate(self.reward_funcs):
+            self._metrics[f"reward/{func_name}"].append(
+                self.accelerator.gather_for_metrics(rewards_per_func[:, i]).mean().item()
+            )
+        
+        return cot_loss
+    
+    def _log_step(self, und_images, edited_images, prompts_text, advantages):
+        global_step = self.state.global_step
+        if global_step % 10 != 0:
+            return
+
+        device_id = str(self.model.device).replace(":", "")
+        log_dir = self.log_dir
+
+        text_content = f"Prompt: {prompts_text[0]}\n"
+        if os.path.exists(os.path.join(log_dir, f"step_{global_step}_{device_id}.txt")):
+            return 
+        with open(os.path.join(log_dir, f"step_{global_step}_{device_id}.txt"), "w", encoding="utf-8") as f:
+            f.write(text_content)
+
+        for idx in range(self.num_generations):
+            orig_img = und_images[0]
+            rev_img = edited_images[idx]
+            orig_img_pil = orig_img
+            rev_img_pil = rev_img
+            orig_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_orig_{idx}.jpg"))
+            rev_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_reverse_{idx}.jpg"))
+
+    def _compute_cot_loss(
+        self,
+        model: nn.Module,
+        input_ids: torch.Tensor,
+        completion_ids: torch.Tensor,
+        prompt_length: int,
+        advantages: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Compute chain-of-thought loss with KL regularization."""
+        # Get per-token log probabilities
+        def get_per_token_logps(model_instance, ids):
+            logits = model_instance(ids).logits[:, :-1, :]
+            ids = ids[:, 1:]
+            per_token_logps = []
+            for logits_row, ids_row in zip(logits, ids):
+                log_probs = logits_row.log_softmax(dim=-1)
+                token_log_prob = torch.gather(log_probs, dim=1, index=ids_row.unsqueeze(1)).squeeze(1)
+                per_token_logps.append(token_log_prob)
+            return torch.stack(per_token_logps)
+        
+        per_token_logps = get_per_token_logps(model, input_ids)[:, prompt_length - 1:]
+        
+        with torch.inference_mode():
+            ref_per_token_logps = get_per_token_logps(self.ref_model, input_ids)[:, prompt_length - 1:]
+        
+        # Compute KL divergence
+        per_token_kl = torch.exp(ref_per_token_logps - per_token_logps) - (ref_per_token_logps - per_token_logps) - 1
+        
+        # Create mask for valid tokens
+        is_eos = completion_ids == self.processing_class.eos_token_id
+        device = self.accelerator.device
+        eos_idx = torch.full((is_eos.size(0),), is_eos.size(1), dtype=torch.long, device=device)
+        eos_idx[is_eos.any(dim=1)] = is_eos.int().argmax(dim=1)[is_eos.any(dim=1)]
+        sequence_indices = torch.arange(is_eos.size(1), device=device).expand(is_eos.size(0), -1)
+        completion_mask = (sequence_indices <= eos_idx.unsqueeze(1)).int()
+        
+        # Compute policy gradient loss
+        advantages_cot = advantages.unsqueeze(1)
+        per_token_loss = torch.exp(per_token_logps - per_token_logps.detach()) * advantages_cot
+        per_token_loss = -(per_token_loss - 0.01 * per_token_kl)
+        cot_loss = ((per_token_loss * completion_mask).sum(dim=1) / completion_mask.sum(dim=1)).mean()
+        mean_kl = ((per_token_kl * completion_mask).sum(dim=1) / completion_mask.sum(dim=1)).mean()
+        
+        return cot_loss, mean_kl, completion_mask
+    
+
+class QwenKontextCycleGRPOTrainer(QwenKontextGRPOTrainer):
+    """
+    GRPO Trainer for optimizing the language model component.
+    
+    This trainer focuses on optimizing the chain-of-thought (CoT) generation
+    by fine-tuning the language model while keeping the diffusion model frozen.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.reverse_diffusion_generation_config = self.diffusion_generation_config
+    
+        
+        if any(name == "clip_sim" for name, _, _ in self.reward_funcs) or any(name == "sim_direction" for name, _, _ in self.reward_funcs):
+            self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(self.accelerator.device)
+            if self.is_deepspeed_enabled:
+                self.clip_model = prepare_deepspeed(self.clip_model, self.accelerator)
+            else:
+                self.clip_model = self.accelerator.prepare_model(self.clip_model, evaluation_mode=True)
+    
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """Compute CoT loss with policy gradient."""
         if return_outputs:
@@ -1577,48 +1746,3 @@ class QwenKontextGRPOTrainer(BaseGRPOTrainer):
             orig_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_orig_{idx}.jpg"))
             rev_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_reverse_{idx}.jpg"))
             recon_img_pil.save(os.path.join(log_dir, f"step_{global_step}_{device_id}_recon_{idx}_{advantages[idx].item()}.jpg"))
-
-    def _compute_cot_loss(
-        self,
-        model: nn.Module,
-        input_ids: torch.Tensor,
-        completion_ids: torch.Tensor,
-        prompt_length: int,
-        advantages: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Compute chain-of-thought loss with KL regularization."""
-        # Get per-token log probabilities
-        def get_per_token_logps(model_instance, ids):
-            logits = model_instance(ids).logits[:, :-1, :]
-            ids = ids[:, 1:]
-            per_token_logps = []
-            for logits_row, ids_row in zip(logits, ids):
-                log_probs = logits_row.log_softmax(dim=-1)
-                token_log_prob = torch.gather(log_probs, dim=1, index=ids_row.unsqueeze(1)).squeeze(1)
-                per_token_logps.append(token_log_prob)
-            return torch.stack(per_token_logps)
-        
-        per_token_logps = get_per_token_logps(model, input_ids)[:, prompt_length - 1:]
-        
-        with torch.inference_mode():
-            ref_per_token_logps = get_per_token_logps(self.ref_model, input_ids)[:, prompt_length - 1:]
-        
-        # Compute KL divergence
-        per_token_kl = torch.exp(ref_per_token_logps - per_token_logps) - (ref_per_token_logps - per_token_logps) - 1
-        
-        # Create mask for valid tokens
-        is_eos = completion_ids == self.processing_class.eos_token_id
-        device = self.accelerator.device
-        eos_idx = torch.full((is_eos.size(0),), is_eos.size(1), dtype=torch.long, device=device)
-        eos_idx[is_eos.any(dim=1)] = is_eos.int().argmax(dim=1)[is_eos.any(dim=1)]
-        sequence_indices = torch.arange(is_eos.size(1), device=device).expand(is_eos.size(0), -1)
-        completion_mask = (sequence_indices <= eos_idx.unsqueeze(1)).int()
-        
-        # Compute policy gradient loss
-        advantages_cot = advantages.unsqueeze(1)
-        per_token_loss = torch.exp(per_token_logps - per_token_logps.detach()) * advantages_cot
-        per_token_loss = -(per_token_loss - 0.01 * per_token_kl)
-        cot_loss = ((per_token_loss * completion_mask).sum(dim=1) / completion_mask.sum(dim=1)).mean()
-        mean_kl = ((per_token_kl * completion_mask).sum(dim=1) / completion_mask.sum(dim=1)).mean()
-        
-        return cot_loss, mean_kl, completion_mask

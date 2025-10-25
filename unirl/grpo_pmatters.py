@@ -29,7 +29,7 @@ from datasets import load_dataset
 from transformers import Qwen2VLForConditionalGeneration, CLIPModel, CLIPProcessor, CLIPImageProcessor
 from unimodel.blip3o.constants import UND_IMAGE_TOKEN
 from trl import GRPOConfig, ModelConfig, ScriptArguments, TrlParser, get_peft_config
-from .trainer import PMattersGRPOTrainer, PMattersGRPOJointTrainer, PMattersGRPODiffusionTrainer, QwenKontextGRPOTrainer
+from .trainer import PMattersGRPOTrainer, PMattersGRPOJointTrainer, PMattersGRPODiffusionTrainer, QwenKontextGRPOTrainer, QwenKontextCycleGRPOTrainer
 from .reward_evaluator.reward_evaluator import RewardEvaluatorClient
 
 
@@ -377,6 +377,7 @@ def main(script_args, training_args, model_args):
         "t2i-diff":  PMattersGRPODiffusionTrainer,
         "t2i-joint": PMattersGRPOJointTrainer,
         "i2i-text":  QwenKontextGRPOTrainer, 
+        "i2i-text-cyle": QwenKontextCycleGRPOTrainer,
     }.get(script_args.task, PMattersGRPOTrainer)
 
     trainer = trainer_cls(
