@@ -30,6 +30,7 @@ SCORER_URLS = {
     "gen_eval": "http://[NODE_ADDR]:18085/",
     "unifiedreward_sglang": "http://[NODE_ADDR]:18086/", 
     "hps": "http://[NODE_ADDR]:18087/", 
+    "editreward": "http://[NODE_ADDR]:18088/", 
 
 }
 
