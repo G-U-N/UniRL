@@ -19,7 +19,7 @@ pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 ### Text-to-Image Generation
 <p align="center">
-  <img src="assets/t2i_comparison.png" width="75%">
+  <img src="assets/t2i_comparison.png" width="85%">
 </p>
 
 ### Instructional Image Editing
