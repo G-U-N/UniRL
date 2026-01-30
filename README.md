@@ -32,13 +32,26 @@ pip install flash-attn==2.7.4.post1 --no-build-isolation
 </p>
 
 
-### Key Results
+## Key Results
 
 PromptRL achieves **2× sample efficiency** compared to flow-only RL while maintaining robust generalization to diverse prompt formulations.
 
-#### GenEval Benchmark
+### Summary
 
-<div align="center">
+| Benchmark | Metric | PromptRL w/ PE | Best Baseline |
+|:---|:---|:---:|:---:|
+| GenEval | Avg. Score ↑ | **0.97** | 0.92 (FlowGRPO) |
+| Aesthetic | PickScore ↑ | **24.05** | 23.63 (DiffusionNFT) |
+| Aesthetic | HPS ↑ | **32.03** | 31.79 (DiffusionNFT) |
+| OCR | OCR-1k ↑ | **0.98** | 0.89 (FlowGRPO) |
+| Image Editing | EditReward Avg. ↑ | **1.43** | 1.44 (ReasonEdit-Think) |
+
+---
+
+<details>
+<summary><b>📊 GenEval Benchmark (Full Results)</b></summary>
+
+<br>
 
 | Model | 1 Obj. | 2 Obj. | Cnt. | Clr. | Pos. | Attr. | Avg.↑ |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -59,11 +72,12 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while maint
 | PromptRL w/o PE | 1.00 | 0.96 | 0.95 | 0.95 | 0.93 | 0.85 | 0.94 |
 | **PromptRL w/ PE** | **1.00** | **0.99** | **0.99** | **0.96** | **0.99** | **0.90** | **0.97** |
 
-</div>
+</details>
 
-#### Aesthetic & OCR Metrics
+<details>
+<summary><b>🎨 Aesthetic & OCR Metrics (Full Results)</b></summary>
 
-<div align="center">
+<br>
 
 | Model | P.S. | HPS | U.R. | OCR-1k | TMDB | OpenLib |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -81,11 +95,12 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while maint
 | PromptRL w/o PE | 24.01 | 31.79 | 3.38 | 0.97 | 0.92 | 0.95 |
 | **PromptRL w/ PE** | **24.05** | **32.03** | **3.44** | **0.98** | **0.91** | **0.95** |
 
-</div>
+</details>
 
-#### Image Editing (EditReward)
+<details>
+<summary><b>✏️ Image Editing - EditReward (Full Results)</b></summary>
 
-<div align="center">
+<br>
 
 | Model | Swap | Style | Add. | Attr. | Env. | Removal | Avg.↑ |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -103,7 +118,7 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while maint
 | PromptRL w/o PE | 1.45 | 1.46 | 1.28 | 1.35 | 1.56 | 0.98 | 1.36 |
 | **PromptRL w/ PE** | **1.47** | **1.43** | **1.29** | **1.39** | **1.72** | **1.24** | **1.43** |
 
-</div>
+</details>
 
 
 ## Method [TBD]
