@@ -1,4 +1,8 @@
-# PromptRL: Prompt Matters in RL for Flow-Based Image Generation
+<p align="center">
+  <img src="assets/logo.png" width="25%"><br>
+  PromptRL
+</p>
+
 
 ## Overview
 
