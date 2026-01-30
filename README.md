@@ -4,6 +4,30 @@
 
 **PromptRL** is a framework that jointly trains language models (LMs) and flow-matching models (FMs) within a unified reinforcement learning loop for text-to-image generation. By incorporating LMs as adaptive prompt refiners, PromptRL addresses two critical limitations in current flow-based RL pipelines: *exploration collapse* due to insufficient generation diversity, and *prompt overfitting* where models memorize specific training formulations.
 
+
+## Installation
+
+```bash
+conda env create -f environment.yml
+conda activate unirl
+pip install git+https://github.com/openai/CLIP.git
+pip install git+https://github.com/huggingface/diffusers.git
+pip install flash-attn==2.7.4.post1 --no-build-isolation
+```
+
+## Qualitative Results
+
+### Text-to-Image Generation
+<p align="center">
+  <img src="assets/t2i_comparison.png" width="75%">
+</p>
+
+### Instructional Image Editing
+<p align="center">
+  <img src="assets/edit_comparison.png" width="75%">
+</p>
+
+
 ### Key Results
 
 PromptRL achieves **2× sample efficiency** compared to flow-only RL while maintaining robust generalization to diverse prompt formulations.
@@ -77,27 +101,6 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while maint
 
 </div>
 
-## Installation
-
-```bash
-conda env create -f environment.yml
-conda activate unirl
-pip install git+https://github.com/openai/CLIP.git
-pip install git+https://github.com/huggingface/diffusers.git
-pip install flash-attn==2.7.4.post1 --no-build-isolation
-```
-
-## Qualitative Results
-
-### Text-to-Image Generation
-<p align="center">
-  <img src="assets/t2i_comparison.png" width="75%">
-</p>
-
-### Instructional Image Editing
-<p align="center">
-  <img src="assets/edit_comparison.png" width="75%">
-</p>
 
 ## Method [TBD]
 
