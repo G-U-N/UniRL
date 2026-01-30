@@ -1,8 +1,6 @@
 # PromptRL: Prompt Matters in RL for Flow-Based Image Generation
 
-<p align="center">
-  <img src="assets/framework.png" width="90%">
-</p>
+
 
 ## Overview
 
@@ -37,12 +35,12 @@ pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 ### Text-to-Image Generation
 <p align="center">
-  <img src="assets/t2i_comparison.png" width="95%">
+  <img src="assets/t2i_comparison.png" width="85%">
 </p>
 
 ### Instructional Image Editing
 <p align="center">
-  <img src="assets/edit_comparison.png" width="95%">
+  <img src="assets/edit_comparison.png" width="85%">
 </p>
 
 ## Method [TBD]
