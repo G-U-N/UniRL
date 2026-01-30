@@ -8,4 +8,6 @@ pip install git+https://github.com/huggingface/diffusers.git
 pip install flash-attn==2.7.4.post1 --no-build-isolation
 ```
 
-## 
+
+> See the original branch at https://github.com/G-U-N/UniRL/tree/master.
+
