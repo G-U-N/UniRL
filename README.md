@@ -37,7 +37,7 @@ pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 ## Key Results
 
-PromptRL achieves **2× sample efficiency** compared to flow-only RL while maintaining robust generalization to diverse prompt formulations.
+PromptRL achieves **2× sample efficiency** compared to flow-only RL while obtains a adaptative prompt refinement agent to improve test-time performance.
 
 ### Summary
 
