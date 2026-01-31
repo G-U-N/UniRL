@@ -1,0 +1,35 @@
+# Batch Image Evaluator Configuration
+
+scorer_urls:
+  aesthetic: "http://YOUR_SERVER_IP:18080/"
+  image_reward: "http://YOUR_SERVER_IP:18081/"
+  ocr: "http://YOUR_SERVER_IP:18082/"
+  pickscore: "http://YOUR_SERVER_IP:18083/"
+  deqa: "http://YOUR_SERVER_IP:18084/"
+  gen_eval: "http://YOUR_SERVER_IP:18085/"
+  unifiedreward_sglang: "http://YOUR_SERVER_IP:18086/"
+  hps: "http://YOUR_SERVER_IP:18087/"
+  editreward: "http://YOUR_SERVER_IP:18088/"
+
+defaults:
+  batch_size: 64
+  recursive: false
+  min_depth: 0
+  max_depth: -1
+
+output: results.json
+verbose: true
+
+evaluations:
+  - path: ./outputs/ocr
+    models: [ocr]
+    batch_size: 32
+    recursive: true
+
+  - path: ./outputs/edit
+    models: [editreward]
+    batch_size: 32
+
+  - path: ./outputs/pickscore
+    models: [pickscore]
+    batch_size: 32
