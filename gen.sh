@@ -31,3 +31,6 @@ python unified_inference.py --mode edit \
     --output_dir outputs/edit \
     --use_cot --cot_template edit_general \
     --guidance_scale 2.5
+
+
+# python eval.py prompts/config.yaml
