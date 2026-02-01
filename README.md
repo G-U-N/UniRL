@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="25%"><br>
+  <img src="assets/logo.png" width="30%"><br>
   PromptRL
 </p>
 
@@ -124,9 +124,25 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while obtai
 </details>
 
 
-## Method [TBD]
 
-## Citation [TBD]
+## Citation
+
+```bibtext
+@article{wang2025promptrl,
+  title={PromptRL: Prompt Matters in RL for Flow-Based Image Generation},
+  author={Wang, Fu-Yun and Zhang, Han and Gharbi, Michael and Li, Hongsheng and Park, Taesung},
+  year={2026}
+}
+```
+
+```bibtext
+@article{wang2025unirl,
+  title={UniRL-Zero: Reinforcement Learning on Unified Models with Joint Language Model and Diffusion Model Experts},
+  author={Wang, Fu-Yun and Zhang, Han and Gharbi, Michael and Li, Hongsheng and Park, Taesung},
+  journal={arXiv preprint arXiv:2510.17937},
+  year={2025}
+}
+```
 
 ## Acknowledgments
 
