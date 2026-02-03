@@ -131,6 +131,7 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while obtai
 @article{wang2025promptrl,
   title={PromptRL: Prompt Matters in RL for Flow-Based Image Generation},
   author={Wang, Fu-Yun and Zhang, Han and Gharbi, Michael and Li, Hongsheng and Park, Taesung},
+  journal={arXiv preprint arXiv:2602.01382},
   year={2026}
 }
 ```
@@ -146,4 +147,4 @@ PromptRL achieves **2× sample efficiency** compared to flow-only RL while obtai
 
 ## Acknowledgments
 
-This codebase builds upon [UniRL](https://github.com/G-U-N/UniRL/tree/master).
+This codebase builds upon [UniRL-Zero](https://github.com/G-U-N/UniRL/tree/master).
