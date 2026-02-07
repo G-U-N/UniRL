@@ -3,6 +3,11 @@
   PromptRL
 </p>
 
+<p align="center">
+  <a href="https://arxiv.org/abs/2602.01382"><img src="https://img.shields.io/badge/arXiv-2602.01382-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://g-u-n.github.io/projects/promptrl/"><img src="https://img.shields.io/badge/Project-Page-green.svg" alt="Project Page"></a>
+  <a href="https://huggingface.co/wangfuyun/PrompRL"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-blue" alt="HuggingFace"></a>
+</p>
 
 ## Overview
 
