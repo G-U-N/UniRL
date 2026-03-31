@@ -1,3 +1,15 @@
+#!/bin/bash
+set -e
+
+# Download eval datasets if not present
+EDIT_DATA="data/omni_edit_dev.parquet"
+if [ ! -f "$EDIT_DATA" ]; then
+    echo "Downloading edit eval dataset..."
+    mkdir -p data
+    huggingface-cli download wangfuyun/PrompRL data/omni_edit_dev.parquet \
+        --repo-type model --local-dir . --local-dir-use-symlinks False
+fi
+
 # # Text-to-Image OCR
 python unified_inference.py --mode t2i \
     --model_path wangfuyun/PrompRL/promptrl_ocr \
@@ -27,7 +39,7 @@ python unified_inference.py --mode geneval \
 python unified_inference.py --mode edit \
     --model_path wangfuyun/PrompRL/promptrl_edit \
     --model_type kontext \
-    --data_file /home/ubuntu/open-r1-multimodal/omni_edit_dev.parquet \
+    --data_file "$EDIT_DATA" \
     --output_dir outputs/edit \
     --use_cot --cot_template edit_general \
     --guidance_scale 2.5
