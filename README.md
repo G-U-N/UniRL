@@ -183,8 +183,6 @@ export REPORT_TO=wandb
 bash scripts/train/edit_grpo_klein.sh
 ```
 
-Klein-base is **undistilled**, so the Kontext-tuned `NUM_INFERENCE_STEPS=8` will sample below klein's quality ceiling. If the reward signal looks noisy or the trained edits look blurry, bump to 16–28 (the official klein default is 50, which is too slow for joint RL).
-
 Common options:
 
 ```bash
