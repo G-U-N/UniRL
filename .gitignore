@@ -145,5 +145,10 @@ outputs/
 wandb/
 
 assets/large_rl_datasets/
+assets/rl_datasets/*.parquet
+!assets/rl_datasets/README.md
 
 utils/parquet_cache/
+
+rewards_services/api_services/editreward_scorer_service/.venv/
+rewards_services/api_services/editreward_scorer_service/EditReward/

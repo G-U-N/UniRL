@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 import numpy as np
+import math
 import torch
 from transformers import (
     CLIPImageProcessor,
@@ -1159,3 +1160,578 @@ class FluxKontextPipeline(
             return (image,)
 
         return FluxPipelineOutput(images=image)
+    
+    
+    
+    
+    # This method should be added to the FluxKontextPipeline class
+    def sde_sampling(
+        self,
+        image: Optional[PipelineImageInput] = None,
+        prompt: Union[str, List[str]] = None,
+        prompt_2: Optional[Union[str, List[str]]] = None,
+        negative_prompt: Union[str, List[str]] = None,
+        negative_prompt_2: Optional[Union[str, List[str]]] = None,
+        true_cfg_scale: float = 1.0,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_inference_steps: int = 28,
+        sigmas: Optional[List[float]] = None,
+        guidance_scale: float = 3.5,
+        num_images_per_prompt: Optional[int] = 1,
+        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+        latents: Optional[torch.FloatTensor] = None,
+        prompt_embeds: Optional[torch.FloatTensor] = None,
+        pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+        ip_adapter_image: Optional[PipelineImageInput] = None,
+        ip_adapter_image_embeds: Optional[List[torch.Tensor]] = None,
+        negative_ip_adapter_image: Optional[PipelineImageInput] = None,
+        negative_ip_adapter_image_embeds: Optional[List[torch.Tensor]] = None,
+        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
+        negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+        output_type: Optional[str] = "pil",
+        return_dict: bool = True,
+        joint_attention_kwargs: Optional[Dict[str, Any]] = None,
+        callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
+        callback_on_step_end_tensor_inputs: List[str] = ["latents"],
+        max_sequence_length: int = 512,
+        max_area: int = 1024**2,
+        num_sde: int = None,
+        noise_scale: float = 0.8,
+        _auto_resize: bool = True,
+    ):
+        r"""
+        SDE sampling function for FLUX Kontext pipeline with log probability tracking.
+        
+        This method performs stochastic differential equation (SDE) based sampling while
+        tracking log probabilities at each step. Useful for training and analysis purposes.
+        
+        Args:
+            image: Input image for image-to-image generation
+            prompt: Text prompt(s) to guide generation
+            prompt_2: Secondary text prompt for text_encoder_2
+            negative_prompt: Negative text prompt(s)
+            negative_prompt_2: Secondary negative prompt
+            true_cfg_scale: Classifier-free guidance scale (when > 1.0)
+            height: Output height in pixels
+            width: Output width in pixels
+            num_inference_steps: Number of denoising steps
+            sigmas: Custom sigma schedule
+            guidance_scale: Embedded guidance scale
+            num_images_per_prompt: Number of images per prompt
+            generator: Random number generator(s)
+            latents: Pre-generated latents
+            prompt_embeds: Pre-generated prompt embeddings
+            pooled_prompt_embeds: Pre-generated pooled embeddings
+            ip_adapter_image: IP-Adapter input image(s)
+            ip_adapter_image_embeds: Pre-generated IP-Adapter embeddings
+            negative_ip_adapter_image: Negative IP-Adapter image(s)
+            negative_ip_adapter_image_embeds: Negative IP-Adapter embeddings
+            negative_prompt_embeds: Pre-generated negative embeddings
+            negative_pooled_prompt_embeds: Pre-generated negative pooled embeddings
+            output_type: Output format ("pil" or "latent")
+            return_dict: Whether to return dict or tuple
+            joint_attention_kwargs: Additional attention parameters
+            callback_on_step_end: Callback function after each step
+            callback_on_step_end_tensor_inputs: Tensors to pass to callback
+            max_sequence_length: Maximum prompt sequence length
+            max_area: Maximum output area in pixels
+            _auto_resize: Whether to auto-resize to preferred resolutions
+            
+        Returns:
+            Tuple of (images, prev_latents, log_probs, pred_latents, timesteps, batched_states)
+        """
+        
+        height = height or self.default_sample_size * self.vae_scale_factor
+        width = width or self.default_sample_size * self.vae_scale_factor
+
+        original_height, original_width = height, width
+        aspect_ratio = width / height
+        
+        width = round((max_area * aspect_ratio) ** 0.5)
+        height = round((max_area / aspect_ratio) ** 0.5)
+
+        multiple_of = self.vae_scale_factor * 2
+        width = width // multiple_of * multiple_of
+        height = height // multiple_of * multiple_of
+
+        if height != original_height or width != original_width:
+            logger.warning(
+                f"Generation `height` and `width` have been adjusted to {height} and {width} to fit the model requirements."
+            )
+
+        # 1. Check inputs
+        self.check_inputs(
+            prompt,
+            prompt_2,
+            height,
+            width,
+            negative_prompt=negative_prompt,
+            negative_prompt_2=negative_prompt_2,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            pooled_prompt_embeds=pooled_prompt_embeds,
+            negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+            callback_on_step_end_tensor_inputs=callback_on_step_end_tensor_inputs,
+            max_sequence_length=max_sequence_length,
+        )
+
+        self._guidance_scale = guidance_scale
+        self._joint_attention_kwargs = joint_attention_kwargs
+        self._current_timestep = None
+        self._interrupt = False
+
+        # 2. Define call parameters
+        if prompt is not None and isinstance(prompt, str):
+            batch_size = 1
+        elif prompt is not None and isinstance(prompt, list):
+            batch_size = len(prompt)
+        else:
+            batch_size = prompt_embeds.shape[0]
+
+        device = self._execution_device
+
+        lora_scale = (
+            self.joint_attention_kwargs.get("scale", None) if self.joint_attention_kwargs is not None else None
+        )
+        has_neg_prompt = negative_prompt is not None or (
+            negative_prompt_embeds is not None and negative_pooled_prompt_embeds is not None
+        )
+        do_true_cfg = true_cfg_scale > 1 and has_neg_prompt
+        
+        # Encode prompts
+        (
+            prompt_embeds,
+            pooled_prompt_embeds,
+            text_ids,
+        ) = self.encode_prompt(
+            prompt=prompt,
+            prompt_2=prompt_2,
+            prompt_embeds=prompt_embeds,
+            pooled_prompt_embeds=pooled_prompt_embeds,
+            device=device,
+            num_images_per_prompt=num_images_per_prompt,
+            max_sequence_length=max_sequence_length,
+            lora_scale=lora_scale,
+        )
+        
+        if do_true_cfg:
+            (
+                negative_prompt_embeds,
+                negative_pooled_prompt_embeds,
+                negative_text_ids,
+            ) = self.encode_prompt(
+                prompt=negative_prompt,
+                prompt_2=negative_prompt_2,
+                prompt_embeds=negative_prompt_embeds,
+                pooled_prompt_embeds=negative_pooled_prompt_embeds,
+                device=device,
+                num_images_per_prompt=num_images_per_prompt,
+                max_sequence_length=max_sequence_length,
+                lora_scale=lora_scale,
+            )
+
+        # 3. Preprocess image
+        if image is not None and not (isinstance(image, torch.Tensor) and image.size(1) == self.latent_channels):
+            from diffusers.pipelines.flux.pipeline_flux_kontext import PREFERRED_KONTEXT_RESOLUTIONS
+            
+            img = image[0] if isinstance(image, list) else image
+            image_height, image_width = self.image_processor.get_default_height_width(img)
+            aspect_ratio = image_width / image_height
+            if _auto_resize:
+                _, image_width, image_height = min(
+                    (abs(aspect_ratio - w / h), w, h) for w, h in PREFERRED_KONTEXT_RESOLUTIONS
+                )
+            image_width = image_width // multiple_of * multiple_of
+            image_height = image_height // multiple_of * multiple_of
+            image = self.image_processor.resize(image, image_height, image_width)
+            image = self.image_processor.preprocess(image, image_height, image_width)
+
+        # 4. Prepare latent variables
+        num_channels_latents = self.transformer.config.in_channels // 4
+        latents, image_latents, latent_ids, image_ids = self.prepare_latents(
+            image,
+            batch_size * num_images_per_prompt,
+            num_channels_latents,
+            height,
+            width,
+            prompt_embeds.dtype,
+            device,
+            generator,
+            latents,
+        )
+        
+        if image_ids is not None:
+            latent_ids = torch.cat([latent_ids, image_ids], dim=0)
+
+        # 5. Prepare timesteps
+        sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps) if sigmas is None else sigmas
+        image_seq_len = latents.shape[1]
+        
+        from diffusers.pipelines.flux.pipeline_flux_kontext import calculate_shift, retrieve_timesteps
+        
+        mu = calculate_shift(
+            image_seq_len,
+            self.scheduler.config.get("base_image_seq_len", 256),
+            self.scheduler.config.get("max_image_seq_len", 4096),
+            self.scheduler.config.get("base_shift", 0.5),
+            self.scheduler.config.get("max_shift", 1.15),
+        )
+        timesteps, num_inference_steps = retrieve_timesteps(
+            self.scheduler,
+            num_inference_steps,
+            device,
+            sigmas=sigmas,
+            mu=mu,
+        )
+        num_warmup_steps = max(len(timesteps) - num_inference_steps * self.scheduler.order, 0)
+        self._num_timesteps = len(timesteps)
+
+        # Handle guidance
+        if self.transformer.config.guidance_embeds:
+            guidance = torch.full([1], guidance_scale, device=device, dtype=torch.float32)
+            guidance = guidance.expand(latents.shape[0])
+        else:
+            guidance = None
+
+        # Handle IP-Adapter images
+        if (ip_adapter_image is not None or ip_adapter_image_embeds is not None) and (
+            negative_ip_adapter_image is None and negative_ip_adapter_image_embeds is None
+        ):
+            negative_ip_adapter_image = np.zeros((width, height, 3), dtype=np.uint8)
+            negative_ip_adapter_image = [negative_ip_adapter_image] * self.transformer.encoder_hid_proj.num_ip_adapters
+
+        elif (ip_adapter_image is None and ip_adapter_image_embeds is None) and (
+            negative_ip_adapter_image is not None or negative_ip_adapter_image_embeds is not None
+        ):
+            ip_adapter_image = np.zeros((width, height, 3), dtype=np.uint8)
+            ip_adapter_image = [ip_adapter_image] * self.transformer.encoder_hid_proj.num_ip_adapters
+
+        if self.joint_attention_kwargs is None:
+            self._joint_attention_kwargs = {}
+
+        image_embeds = None
+        negative_image_embeds = None
+        if ip_adapter_image is not None or ip_adapter_image_embeds is not None:
+            image_embeds = self.prepare_ip_adapter_image_embeds(
+                ip_adapter_image,
+                ip_adapter_image_embeds,
+                device,
+                batch_size * num_images_per_prompt,
+            )
+        if negative_ip_adapter_image is not None or negative_ip_adapter_image_embeds is not None:
+            negative_image_embeds = self.prepare_ip_adapter_image_embeds(
+                negative_ip_adapter_image,
+                negative_ip_adapter_image_embeds,
+                device,
+                batch_size * num_images_per_prompt,
+            )
+
+        # 6. SDE Denoising loop with state tracking
+        prev_latents = []
+        pred_latents = []
+        states = {
+            "timestep": [],
+            "guidance": [],
+            "pooled_projections": [],
+            "encoder_hidden_states": [],
+            "txt_ids": None,
+            "img_ids": None,
+        }
+        log_probs = []
+        ts = []
+        
+        states["txt_ids"] = text_ids if text_ids is not None else None  
+        states["img_ids"] = latent_ids if latent_ids is not None else None
+
+        if num_sde is None:
+            num_sde = num_inference_steps
+        with self.progress_bar(total=num_inference_steps) as progress_bar:
+            for i, t in enumerate(timesteps):
+                if self.interrupt:
+                    continue
+
+                self._current_timestep = t
+                if image_embeds is not None:
+                    self._joint_attention_kwargs["ip_adapter_image_embeds"] = image_embeds
+                
+                # Prepare model input
+                latent_model_input = latents
+                if image_latents is not None:
+                    latent_model_input = torch.cat([latents, image_latents], dim=1)
+                
+                timestep = (t.expand(latents.shape[0]) / 1000.).to(latents.dtype)
+                
+                
+                if i < num_sde:
+                    # Store states
+                    states["timestep"].append(timestep.unsqueeze(1))
+                    states["guidance"].append(guidance.unsqueeze(1) if torch.is_tensor(guidance) else guidance)
+                    states["pooled_projections"].append(pooled_prompt_embeds.unsqueeze(1) if pooled_prompt_embeds is not None else None)
+                    states["encoder_hidden_states"].append(prompt_embeds.unsqueeze(1) if prompt_embeds is not None else None)
+                    
+                    ts.append(t.expand(latents.shape[0]).unsqueeze(1))
+                    # prev_latents.append(latents.detach().clone().unsqueeze(1))
+                    prev_latents.append(latent_model_input.detach().clone().unsqueeze(1))
+
+                # Forward pass
+                noise_pred = self.transformer(
+                    hidden_states=latent_model_input,
+                    timestep=timestep,
+                    guidance=guidance,
+                    pooled_projections=pooled_prompt_embeds,
+                    encoder_hidden_states=prompt_embeds,
+                    txt_ids=text_ids,
+                    img_ids=latent_ids,
+                    joint_attention_kwargs=self.joint_attention_kwargs,
+                    return_dict=False,
+                )[0]
+                noise_pred = noise_pred[:, :latents.size(1)]
+
+                # Apply true CFG if needed
+                if do_true_cfg:
+                    if negative_image_embeds is not None:
+                        self._joint_attention_kwargs["ip_adapter_image_embeds"] = negative_image_embeds
+                    
+                    neg_latent_model_input = latents
+                    if image_latents is not None:
+                        neg_latent_model_input = torch.cat([latents, image_latents], dim=1)
+                        
+                    neg_noise_pred = self.transformer(
+                        hidden_states=neg_latent_model_input,
+                        timestep=timestep,
+                        guidance=guidance,
+                        pooled_projections=negative_pooled_prompt_embeds,
+                        encoder_hidden_states=negative_prompt_embeds,
+                        txt_ids=negative_text_ids,
+                        img_ids=latent_ids,
+                        joint_attention_kwargs=self.joint_attention_kwargs,
+                        return_dict=False,
+                    )[0]
+                    neg_noise_pred = neg_noise_pred[:, :latents.size(1)]
+                    noise_pred = neg_noise_pred + true_cfg_scale * (noise_pred - neg_noise_pred)
+
+                if i < num_sde:
+                    # SDE step with log probability
+                    latents_dtype = latents.dtype
+                    latents, log_prob, prev_latents_mean, std_dev = sde_step_with_logprob(
+                        self.scheduler,
+                        noise_pred.float(),
+                        t.expand(latents.shape[0]),
+                        latents.float(),
+                        noise_scale=noise_scale,
+                    )
+
+                    log_probs.append(log_prob.detach().clone().unsqueeze(1))
+                    pred_latents.append(latents.detach().clone().unsqueeze(1))
+                    # Maintain scheduler._step_index so the deterministic
+                    # scheduler.step() calls after the SDE prefix read sigmas
+                    # at the right index. Without this, set_begin_index(0)
+                    # above causes the first deterministic step to re-read
+                    # sigmas[0,1] instead of sigmas[num_sde, num_sde+1].
+                    if self.scheduler.step_index is None:
+                        self.scheduler._init_step_index(t)
+                    self.scheduler._step_index += 1
+                else:
+                    # Standard scheduler step
+                    latents_dtype = latents.dtype
+                    latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
+                    
+                    
+                if latents.dtype != latents_dtype:
+                    latents = latents.to(latents_dtype)
+
+                if callback_on_step_end is not None:
+                    callback_kwargs = {}
+                    for k in callback_on_step_end_tensor_inputs:
+                        callback_kwargs[k] = locals()[k]
+                    callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
+                    latents = callback_outputs.pop("latents", latents)
+                    prompt_embeds = callback_outputs.pop("prompt_embeds", prompt_embeds)
+
+                if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
+                    progress_bar.update()
+
+                if XLA_AVAILABLE:
+                    xm.mark_step()
+
+        self._current_timestep = None
+
+        # Decode latents to images
+        if output_type == "latent":
+            image = latents
+        else:
+            latents = self._unpack_latents(latents, height, width, self.vae_scale_factor)
+            latents = (latents / self.vae.config.scaling_factor) + self.vae.config.shift_factor
+            image = self.vae.decode(latents, return_dict=False)[0]
+            image = self.image_processor.postprocess(image, output_type=output_type)
+
+        # Batch states for output
+        batched_states = {}
+        for key, value_list in states.items():
+            if value_list is None or len(value_list) == 0:
+                batched_states[key] = None
+                continue
+            if isinstance(value_list, list) and value_list[0] is None:
+                batched_states[key] = None
+                continue
+            if isinstance(value_list, list):
+                concatenated = torch.cat(value_list, dim=1)
+                if len(concatenated.shape) <= 2:
+                    batched_states[key] = concatenated.view(-1)
+                else:
+                    batched_states[key] = concatenated.view(-1, *concatenated.shape[2:])
+            else:
+                batched_states[key] = value_list
+
+        # Reshape outputs
+        prev_latents = torch.cat(prev_latents, dim=1)
+        log_probs = torch.cat(log_probs, dim=1)
+        pred_latents = torch.cat(pred_latents, dim=1)
+        ts = torch.cat(ts, dim=1)
+
+        prev_latents = prev_latents.view(prev_latents.shape[0] * prev_latents.shape[1], *prev_latents.shape[2:])
+        log_probs = log_probs.view(log_probs.shape[0] * log_probs.shape[1], *log_probs.shape[2:])
+        pred_latents = pred_latents.view(pred_latents.shape[0] * pred_latents.shape[1], *pred_latents.shape[2:])
+        ts = ts.view(-1)
+
+        # Offload models
+        self.maybe_free_model_hooks()
+
+        return (image, prev_latents, log_probs, pred_latents, ts, batched_states)
+    
+    
+def sde_step_with_logprob(
+    scheduler: FlowMatchEulerDiscreteScheduler,
+    model_output: torch.FloatTensor,
+    timestep: Union[float, torch.FloatTensor],
+    sample: torch.FloatTensor,
+    prev_sample: Optional[torch.FloatTensor] = None,
+    generator: Optional[torch.Generator] = None,
+    noise_scale: float = 0.8,
+) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+    """
+    Predict the sample from the previous timestep by reversing the SDE with log probability tracking.
+
+    Args:
+        scheduler: The FlowMatchEulerDiscreteScheduler instance
+        model_output: The direct output from learned flow model
+        timestep: The current discrete timestep in the diffusion chain
+        sample: A current instance of a sample created by the diffusion process
+        prev_sample: Optional pre-computed previous sample
+        generator: A random number generator
+        noise_scale: Multiplicative coefficient on the per-step SDE noise std (FlowGRPO uses ~0.8).
+            Larger values inject more exploration noise; 0 falls back to deterministic ODE.
+
+    Returns:
+        Tuple of (prev_sample, log_prob, prev_sample_mean, std_dev)
+    """
+    step_index = [scheduler.index_for_timestep(t) for t in timestep]
+    prev_step_index = [step + 1 for step in step_index]
+    sigma = scheduler.sigmas[step_index].view(-1, 1, 1).to(model_output.device)
+    sigma_prev = scheduler.sigmas[prev_step_index].view(-1, 1, 1).to(model_output.device)
+    sigma_max = scheduler.sigmas[1].item()
+    dt = sigma_prev - sigma
+
+    std_dev_t = torch.sqrt(sigma / (1 - torch.where(sigma == 1, sigma_max, sigma))) * noise_scale
+    
+    # SDE formulation
+    prev_sample_mean = (
+        sample * (1 + std_dev_t**2 / (2 * sigma) * dt) + 
+        model_output * (1 + std_dev_t**2 * (1 - sigma) / (2 * sigma)) * dt
+    )
+    
+    if prev_sample is not None and generator is not None:
+        raise ValueError(
+            "Cannot pass both generator and prev_sample. Please make sure that either `generator` or"
+            " `prev_sample` stays `None`."
+        )
+
+    if prev_sample is None:
+        variance_noise = randn_tensor(
+            model_output.shape,
+            generator=generator,
+            device=model_output.device,
+            dtype=model_output.dtype,
+        )
+        prev_sample = prev_sample_mean + std_dev_t * torch.sqrt(-1 * dt) * variance_noise
+    
+    # Calculate log probability
+    variance = (std_dev_t * torch.sqrt(-1 * dt)) ** 2
+    log_prob = (
+        -((prev_sample.detach() - prev_sample_mean) ** 2) / (2 * variance)
+        - torch.log(torch.sqrt(variance))
+        - torch.log(torch.sqrt(2 * torch.as_tensor(math.pi)))
+    )
+
+    # Mean along all but batch dimension
+    log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))
+    
+    return prev_sample, log_prob, prev_sample_mean, std_dev_t * torch.sqrt(-1 * dt)
+
+
+def sde_step_with_logprob_simple(
+    scheduler: FlowMatchEulerDiscreteScheduler,
+    model_output: torch.FloatTensor,
+    timestep: Union[float, torch.FloatTensor],
+    sample: torch.FloatTensor,
+    prev_sample: Optional[torch.FloatTensor] = None,
+    generator: Optional[torch.Generator] = None,
+) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+    """
+    Simplified SDE step with log probability tracking using eta parameter.
+    
+    Args:
+        scheduler: The FlowMatchEulerDiscreteScheduler instance
+        model_output: The direct output from learned flow model
+        timestep: The current discrete timestep in the diffusion chain
+        sample: A current instance of a sample created by the diffusion process
+        prev_sample: Optional pre-computed previous sample
+        generator: A random number generator
+        
+    Returns:
+        Tuple of (prev_sample, log_prob, prev_sample_mean, std_dev)
+    """
+    step_index = [scheduler.index_for_timestep(t) for t in timestep]
+    prev_step_index = [step + 1 for step in step_index]
+    sigma = scheduler.sigmas[step_index].view(-1, 1, 1).to(model_output.device)
+    sigma_prev = scheduler.sigmas[prev_step_index].view(-1, 1, 1).to(model_output.device)
+    sigma_max = scheduler.sigmas[1].item()
+    dt = sigma_prev - sigma
+    
+    eta = 0.5
+    Dt = -dt * eta
+    
+    prev_sample_mean = (
+        sample * (1 - Dt / (1 - torch.where(sigma == 1, sigma_max, sigma))) + 
+        model_output * (dt - Dt)
+    )
+    
+    std_dev_t = torch.sqrt(2 * Dt * (sigma / (1 - torch.where(sigma == 1, sigma_max, sigma))))
+    
+    if prev_sample is not None and generator is not None:
+        raise ValueError(
+            "Cannot pass both generator and prev_sample. Please make sure that either `generator` or"
+            " `prev_sample` stays `None`."
+        )
+
+    if prev_sample is None:
+        variance_noise = randn_tensor(
+            model_output.shape,
+            generator=generator,
+            device=model_output.device,
+            dtype=model_output.dtype,
+        )
+        prev_sample = prev_sample_mean + std_dev_t * variance_noise
+
+    # Calculate log probability
+    log_prob = (
+        -((prev_sample.detach() - prev_sample_mean) ** 2) / (2 * (std_dev_t**2))
+        - torch.log(std_dev_t)
+        - torch.log(torch.sqrt(2 * torch.as_tensor(math.pi)))
+    )
+
+    # Mean along all but batch dimension
+    log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))
+    
+    return prev_sample, log_prob, prev_sample_mean, std_dev_t

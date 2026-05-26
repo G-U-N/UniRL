@@ -412,16 +412,34 @@ AutoModelForCausalLM.register(QwenKontextConfig, QwenKontextForInferenceLM)
 
 
 if __name__ == "__main__":
-    model = QwenKontextForInferenceLM.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct",torch_dtype=torch.bfloat16)
+    import os
+
+    model = QwenKontextForInferenceLM.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct", torch_dtype=torch.bfloat16)
     model.model.initialize_diffusion_expert()
     model.model.diffusion_expert.to("cuda:0")
     model.to("cuda:0")
     AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
-    text = ["add a hat to him"]
-    ref_image = [Image.open("assets/images/cat.jpg").convert("RGB")]
-    images = model.generate_image(ref_image, text)
-    images[0].save("test_flux.jpg")
-    model.save_pretrained("outputs/pretrain/qwenkontext")
+
+    output_dir = os.environ.get("QWENKONTEXT_SAVE_DIR", "outputs/pretrain/qwenkontext")
+
+    sanity_image = os.environ.get("QWENKONTEXT_SANITY_IMAGE")
+    if sanity_image and os.path.isfile(sanity_image):
+        try:
+            text = ["add a hat to him"]
+            ref_image = [Image.open(sanity_image).convert("RGB")]
+            images = model.generate_image(ref_image, text)
+            images[0].save("test_flux.jpg")
+            print(f"Sanity edit saved to test_flux.jpg using {sanity_image}.")
+        except Exception as exc:
+            print(f"Sanity edit failed ({exc}); proceeding to save the fused checkpoint anyway.")
+    else:
+        print(
+            "Skipping inference sanity check; set QWENKONTEXT_SANITY_IMAGE=/path/to/image.jpg "
+            "to verify FLUX.1-Kontext inference end-to-end."
+        )
+
+    model.save_pretrained(output_dir)
+    print(f"Fused Qwen-Kontext checkpoint saved to {output_dir}.")
     
     
     # model = QwenKontextForInferenceLM.from_pretrained("outputs/pretrain/qwenkontext", torch_dtype=torch.bfloat16)

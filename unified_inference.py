@@ -15,8 +15,12 @@ Example usage:
     python unified_inference.py --mode geneval --model_path ./model --model_type flux \
         --metadata_file evaluation_metadata.jsonl --output_dir outputs/geneval --n_samples 4
 
-    # Image Editing
+    # Image Editing (FLUX.1-Kontext-dev)
     python unified_inference.py --mode edit --model_path ./model --model_type kontext \
+        --data_file data.parquet --output_dir outputs/edit
+
+    # Image Editing (FLUX.2-klein-base-4B)
+    python unified_inference.py --mode edit --model_path ./model --model_type klein \
         --data_file data.parquet --output_dir outputs/edit
 """
 
@@ -40,6 +44,7 @@ from torchvision import transforms as TF
 # Model imports
 from unimodel.qwenflux.qwenflux_inference import QwenFluxForInferenceLM
 from unimodel.qwenkontext.qwenkontext_inference import QwenKontextForInferenceLM
+from unimodel.qwenklein.qwenklein_inference import QwenKleinForInferenceLM
 
 # Global configuration
 NUM_DEVICE = 8
@@ -109,6 +114,10 @@ def load_model_pipeline(model_path, model_type, device):
         )
     elif model_type == "kontext":
         model = QwenKontextForInferenceLM.from_pretrained(
+            model_path, torch_dtype=torch.bfloat16, subfolder=subfolder
+        )
+    elif model_type == "klein":
+        model = QwenKleinForInferenceLM.from_pretrained(
             model_path, torch_dtype=torch.bfloat16, subfolder=subfolder
         )
     else:
@@ -507,7 +516,7 @@ def parse_args():
     parser.add_argument("--model_path", type=str, required=True, help="Model path")
     parser.add_argument(
         "--model_type", type=str, default="flux",
-        choices=["flux", "sana", "sd3", "kontext"],
+        choices=["flux", "sana", "sd3", "kontext", "klein"],
         help="Model type"
     )
     
@@ -556,8 +565,8 @@ def main():
         raise ValueError("--metadata_file is required for geneval mode")
     if args.mode == "edit" and not args.data_file:
         raise ValueError("--data_file is required for edit mode")
-    if args.mode == "edit" and args.model_type != "kontext":
-        print(f"Warning: edit mode typically uses kontext model, but got {args.model_type}")
+    if args.mode == "edit" and args.model_type not in ("kontext", "klein"):
+        print(f"Warning: edit mode typically uses kontext or klein model, but got {args.model_type}")
     
     # Load data based on mode
     print(f"Mode: {args.mode}")
