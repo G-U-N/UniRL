@@ -1,6 +1,5 @@
 ---
 license: apache-2.0
-library_name: diffusers
 tags:
   - reinforcement-learning
   - image-generation
@@ -8,7 +7,7 @@ tags:
   - prompt-optimization
   - flux
   - qwen
-datasets:
+models:
   - wangfuyun/PrompRL
 ---
 
